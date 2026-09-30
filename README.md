@@ -1,17 +1,23 @@
 # For Sale — Good company. Great deals.
 
-A playable, social web adaptation of Stefan Dorra’s **For Sale**, built with Next.js App Router, TypeScript, Tailwind CSS, and shadcn/ui (Base UI). Original SVG characters and property illustrations; no external image service or artwork downloads.
+A playable, social web adaptation of Stefan Dorra’s **For Sale**, built with Next.js App Router, TypeScript, Convex, Tailwind CSS, and shadcn/ui (Base UI). Original SVG characters and property illustrations; no external image service or artwork downloads.
 
 ## Run locally
 
-Use **Node.js 24 LTS** (the room store uses built-in `node:sqlite`).
+Use **Node.js 24 LTS**.
 
 ```sh
 npm install
+npm run convex:dev
+```
+
+In a second terminal, start the app:
+
+```sh
 npm run dev
 ```
 
-Open the URL printed by Next.js. Choose **Play a practice round**, or **Create a table** and share the invitation with friends. Rooms support 3–6 seats. Hosts can add and remove bots before starting. No account or API key is required.
+`npm run convex:dev` connects the project to a Convex development deployment and writes its URL to `.env.local`. Open the URL printed by Next.js. Choose **Play a practice round**, or **Create a table** and share the invitation with friends. Rooms support 3–6 seats. Hosts can add and remove bots before starting.
 
 For friends on the same Wi-Fi, run `npm run dev -- --hostname 0.0.0.0` and open the computer’s LAN IP address in every browser. An invitation containing `localhost` works only on that computer. For remote friends, deploy the server at a shared public URL.
 
@@ -42,11 +48,11 @@ Fan-made adaptation; not affiliated with or endorsed by the publisher. For Sale 
 
 ## Server and persistence
 
-The client polls every 750 ms. Each update is validated and committed in an SQLite transaction; bots and between-round transitions advance during room updates. A disconnected human’s turn waits for their return rather than spending their money automatically.
+The client polls every 750 ms. Room creation, joins, moves, bot turns, and between-round transitions run as atomic Convex mutations, so every Vercel instance reads and writes the same persistent room state. A disconnected human’s turn waits for their return rather than spending their money automatically.
 
-SQLite lives in `.data/rooms.sqlite`. Set `DATA_DIR` to change its location. Keep that directory private and on durable storage. Browser local storage holds each player’s unguessable seat credential; clearing it loses that seat. Sharing a room URL never shares the credential.
+Convex stores each room as one document indexed by its six-character code. Browser local storage holds each player’s unguessable seat credential; clearing it loses that seat. Sharing a room URL never shares the credential.
 
-**Deployment target: one persistent Node server.** This is not a stateless/serverless deployment: multiple replicas would need a shared database and coordinated room updates. There are no accounts, voice chat, public matchmaking, or automatic substitution for disconnected players. Reactions provide lightweight social presence.
+There are no accounts, voice chat, public matchmaking, or automatic substitution for disconnected players. Reactions provide lightweight social presence.
 
 ## Production
 
@@ -55,13 +61,13 @@ npm run build
 npm start
 ```
 
-Or use Docker with persistent storage:
+For Vercel, set `CONVEX_DEPLOY_KEY` in the project’s environment variables and use this Build Command:
 
 ```sh
-docker compose up --build
+npx convex deploy --cmd 'npm run build'
 ```
 
-The container serves port 3000. Put HTTPS in front of it for public deployment. Rooms persist in the named `for-sale-data` volume.
+Create the deploy key from the Convex deployment used for production. The Convex CLI deploys the functions and makes `NEXT_PUBLIC_CONVEX_URL` available to the Next.js build. If the URL is configured separately, set `NEXT_PUBLIC_CONVEX_URL` in Vercel as well. Redeploy after changing environment variables.
 
 ## Checks
 
@@ -78,7 +84,9 @@ End-to-end tests use a separate Next.js build directory, port 3100, and `.data/e
 ## Code map
 
 - `src/lib/game.ts`: game rules, bots, public/private state boundary.
-- `src/lib/store.ts`: transactional persistent room store.
+- `convex/schema.ts`: the persistent room table and room-code index.
+- `convex/rooms.ts`: atomic room creation, authenticated snapshots, joins, and actions.
+- `src/lib/convex.ts`: server-side Convex client used by the API routes.
 - `src/app/api/rooms/`: room creation, authenticated snapshots, joining, and actions.
 - `src/hooks/use-game.ts`: reconnects, polling, actions, and stale-response protection.
 - `src/components/table-board.tsx`: table, seats, market, and reveal.
