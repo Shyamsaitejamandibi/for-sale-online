@@ -1,23 +1,19 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
   Check,
   ChevronRight,
-  Coins,
   DoorOpen,
   EyeOff,
   Flag,
-  Gavel,
   HelpCircle,
   House,
   Landmark,
   Link2,
   LockKeyhole,
-  Minus,
   Plus,
   Smile,
   Sparkles,
@@ -28,13 +24,16 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HouseArt, PropertyCard } from "./game-art";
+import { HouseArt } from "./game-art";
+import { PlayerDock } from "./player-dock";
+import { LearningEntry, MoveShortcut, RoundGuide } from "./game-experience";
+import { usePreference } from "@/hooks/use-preference";
+import { useGameAudio } from "@/hooks/use-game-audio";
 import { GameDialogs, type Modal } from "./game-dialogs";
 import { useGame } from "@/hooks/use-game";
 import { GameBoard } from "./table-board";
 import { Results } from "./game-results";
 import { cn } from "@/lib/utils";
-const money = (n: number) => `$${(n * 1000).toLocaleString("en-US")}`;
 export default function GameTable() {
   const {
     game,
@@ -50,48 +49,13 @@ export default function GameTable() {
     dismissJoin,
   } = useGame();
   const [modal, setModal] = useState<Modal>(null);
-  const [bid, setBid] = useState(1);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [sound, setSound] = useState(false);
+  const [sound, setSound] = usePreference("sound", false);
+  const [tips, setTips] = usePreference("table-tips", true);
   const [reactions, setReactions] = useState(false);
-  const [handOpen, setHandOpen] = useState(true);
-  const audio = useRef<AudioContext | null>(null);
-  const previousTurn = useRef("");
-  const me = game?.players.find((p) => p.id === game.me);
-  const myTurn =
-    game?.phase === "buying" &&
-    game.players[game.turn]?.id === game.me &&
-    !game.pauseUntil;
-  const minBid = (game?.highBid ?? 0) + 1;
-  const effectiveBid = Math.min(game?.coins ?? 21, Math.max(minBid, bid));
-  const canBid = !!game && myTurn && game.coins >= minBid;
-  const chosen =
-    selected !== null && game?.hand.includes(selected) ? selected : null;
-
-  useEffect(() => {
-    const key = myTurn ? `${game?.round}-${game?.highBid}` : "";
-    if (key && key !== previousTurn.current && sound) {
-      const ctx = audio.current;
-      if (ctx) {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = "sine";
-        o.frequency.setValueAtTime(660, ctx.currentTime);
-        o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.13);
-        g.gain.setValueAtTime(0.07, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-        o.connect(g);
-        g.connect(ctx.destination);
-        o.start();
-        o.stop(ctx.currentTime + 0.35);
-      }
-    }
-    previousTurn.current = key;
-  }, [myTurn, game?.round, game?.highBid, sound]);
+  const unlockAudio = useGameAudio(game, sound);
   function toggleSound() {
-    if (!audio.current) audio.current = new AudioContext();
-    audio.current.resume();
-    setSound((s) => !s);
+    unlockAudio();
+    setSound(!sound);
   }
   const phase = game?.phase ?? "buying";
   const lobby = phase === "lobby";
@@ -350,6 +314,14 @@ export default function GameTable() {
               </span>
             </div>
           </section>
+          {!game && <LearningEntry onLearn={() => setModal("tutorial")} />}
+          {game && (phase === "buying" || phase === "selling") && (
+            <RoundGuide
+              game={game}
+              tips={tips}
+              onToggleTips={() => setTips(!tips)}
+            />
+          )}
           {offline && (
             <div className="offline-banner" role="status">
               <WifiOff size={16} />
@@ -462,172 +434,13 @@ export default function GameTable() {
             />
           )}{" "}
           {game && (phase === "buying" || phase === "selling") && (
-            <section className="player-dock">
-              <div className="hand-panel">
-                <div className="hand-heading">
-                  <h2>
-                    Your little empire <span>{game.hand.length}</span>
-                  </h2>
-                  <button onClick={() => setHandOpen(!handOpen)}>
-                    <EyeOff size={13} />
-                    {handOpen ? "Only you can see" : "Show hand"}
-                  </button>
-                </div>
-                {handOpen ? (
-                  <div className="hand-cards">
-                    {game.hand.length ? (
-                      game.hand.map((value) => (
-                        <PropertyCard
-                          key={value}
-                          value={value}
-                          compact
-                          selected={chosen === value || game.selected === value}
-                          onClick={
-                            phase === "selling"
-                              ? () => setSelected(value)
-                              : undefined
-                          }
-                          disabled={!!game.pauseUntil || game.selected !== null}
-                        />
-                      ))
-                    ) : (
-                      <div className="empty-hand">
-                        <div className="empty-card">
-                          <House size={22} />
-                        </div>
-                        <div>
-                          <strong>Every empire starts somewhere.</strong>
-                          <span>Your first property is just a bid away.</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="hidden-hand">
-                    <LockKeyhole size={20} />
-                    Your {game.hand.length} properties are tucked away.
-                  </div>
-                )}
-              </div>
-              <div className="action-panel">
-                <div className="wallet">
-                  <span>
-                    <Coins size={16} />
-                    Your buying power
-                  </span>
-                  <strong>{money(game.coins)}</strong>
-                </div>
-                {phase === "buying" ? (
-                  <>
-                    <div className="action-title">
-                      <span
-                        className={cn("live-dot", !myTurn && "waiting-dot")}
-                      />
-                      <strong>
-                        {game.pauseUntil
-                          ? "A new round is coming…"
-                          : myTurn
-                            ? "Your move. Make it a good one."
-                            : me?.passed
-                              ? "You’re all set for this round."
-                              : `${game.players[game.turn]?.name} is weighing it up…`}
-                      </strong>
-                    </div>
-                    <div className="bid-controls">
-                      <div className="bid-stepper">
-                        <button
-                          aria-label="Decrease bid"
-                          disabled={!canBid || effectiveBid <= minBid || busy}
-                          onClick={() => setBid(effectiveBid - 1)}
-                        >
-                          <Minus size={17} />
-                        </button>
-                        <span>{money(effectiveBid)}</span>
-                        <button
-                          aria-label="Increase bid"
-                          disabled={
-                            !canBid || effectiveBid >= game.coins || busy
-                          }
-                          onClick={() => setBid(effectiveBid + 1)}
-                        >
-                          <Plus size={17} />
-                        </button>
-                      </div>
-                      <Button
-                        className="primary-button bid-button"
-                        disabled={!canBid || busy || offline}
-                        onClick={() =>
-                          action({ type: "bid", amount: effectiveBid })
-                        }
-                      >
-                        <Gavel size={16} />
-                        Place bid
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="pass-button"
-                        disabled={!myTurn || busy || offline}
-                        onClick={() => action({ type: "pass" })}
-                      >
-                        Pass
-                        <ArrowDownLeft size={16} />
-                      </Button>
-                    </div>
-                    <p className="action-hint">
-                      {myTurn ? (
-                        <>
-                          Pass to take the lowest property for{" "}
-                          <strong>
-                            {money(Math.ceil((me?.bid ?? 0) / 2))}
-                          </strong>
-                          .{!canBid && " Your budget is below the next bid."}
-                        </>
-                      ) : (
-                        <>
-                          Your hand stays private. Your poker face is up to you.
-                        </>
-                      )}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="action-title">
-                      <LockKeyhole size={15} />
-                      <strong>
-                        {game.pauseUntil
-                          ? "The results are in!"
-                          : game.selected !== null
-                            ? "Locked in. Keep that poker face."
-                            : "Pick the property you want to sell."}
-                      </strong>
-                    </div>
-                    <Button
-                      className="primary-button sell-button"
-                      disabled={
-                        chosen === null ||
-                        busy ||
-                        game.selected !== null ||
-                        !!game.pauseUntil ||
-                        offline
-                      }
-                      onClick={() => action({ type: "sell", card: chosen! })}
-                    >
-                      {game.selected !== null ? <Check /> : <LockKeyhole />}
-                      {game.selected !== null
-                        ? "Property locked in"
-                        : chosen !== null
-                          ? `Lock in property ${chosen}`
-                          : "Select a card from your hand"}
-                    </Button>
-                    <p className="action-hint">
-                      {game.players.filter((p) => p.locked).length} /{" "}
-                      {game.players.length} locked in · Revealed together, never
-                      early.
-                    </p>
-                  </>
-                )}
-              </div>
-            </section>
+            <PlayerDock
+              game={game}
+              busy={busy}
+              offline={offline}
+              tips={tips}
+              action={action}
+            />
           )}
           <footer className="game-footer">
             <span>
@@ -670,6 +483,9 @@ export default function GameTable() {
           </footer>
         </div>
       </main>
+      {game && (phase === "buying" || phase === "selling") && (
+        <MoveShortcut game={game} />
+      )}
       {error && modal !== "create" && modal !== "join" && (
         <div className="error-toast" role="alert">
           <Flag size={16} />

@@ -22,6 +22,11 @@ For friends on the same Wi-Fi, run `npm run dev -- --hostname 0.0.0.0` and open 
 - 3–6 real players, mixed human/bot tables, and one-click four-player practice.
 - Seated characters, current bids, turn indicators, locked-card indicators, brief emoji reactions, and optional turn sounds.
 - Your own property hand, hide-hand control, spending balance, contextual pass cost, and bid stepper.
+- A hands-on, three-step lesson for first-time players, available from the welcome screen and rules reference.
+- A two-phase progress tracker, explicit turn guidance, optional table tips, and an off-screen move shortcut on phones.
+- Quick bid amounts and separate win/pass previews showing the payment, remaining cash, and pass property before committing.
+- Hand sorting, a private portfolio with earned checks and saved cash, selected-property previews, and named selling readiness.
+- Personal sale highlights and payout summaries, with subtle optional cues for buying turns, selling rounds, reveals, and the final result. Sound and table-tip preferences survive reloads.
 - Responsive phone and desktop layouts, keyboard-operable dialogs and controls, live status announcements, and reduced-motion support.
 - Rejoining the same invitation in the original browser restores the seat. Room state survives server restarts.
 
@@ -78,7 +83,17 @@ End-to-end tests use a separate Next.js build directory, port 3100, and `.data/e
 - `src/hooks/use-game.ts`: reconnects, polling, actions, and stale-response protection.
 - `src/components/table-board.tsx`: table, seats, market, and reveal.
 - `src/components/game-table.tsx`: game screen, private hand, and controls.
+- `src/components/player-dock.tsx`: private hand, portfolio, bid previews, and selling decisions.
+- `src/components/game-experience.tsx`: lesson entry, round guidance, and mobile move shortcut.
+- `src/components/game-lesson.tsx`: interactive learning examples without changing a live table.
+- `src/lib/game-presentation.ts`: visible move costs and turn prompts, derived only from the authenticated view.
 - `src/components/game-art.tsx`: original vector artwork.
 - `src/components/game-dialogs.tsx`: setup, invitations, rules, and leaving.
 - `src/components/game-results.tsx`: final scores and rematch.
 - `src/components/ui/`: shadcn primitives.
+
+## Experience references
+
+The experience upgrades draw on [Board Game Arena’s UX guidelines](https://en.doc.boardgamearena.com/images/5/57/Guidelines_UX_new_compressed.pdf) for clear available actions, meaningful feedback, and mobile navigation; its [interactive tutorial approach](https://en.boardgamearena.com/news?id=572) for learning through decisions; and [NN/g’s usability heuristics](https://www.nngroup.com/articles/ten-usability-heuristics/) for visible status, recognition, and error prevention.
+
+The bid/pass comparison, private portfolio, contextual phone shortcut, and personal sale highlight apply those principles to For Sale. They preserve the existing rules and information boundary: there is no opponent ownership log, automatic move, or revealed selling choice before everyone locks in.

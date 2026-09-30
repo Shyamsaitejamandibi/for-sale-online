@@ -18,7 +18,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Avatar } from "./game-art";
-export type Modal = "create" | "join" | "rules" | "invite" | "leave" | null;
+import { GameLesson } from "./game-lesson";
+export type Modal =
+  "create" | "join" | "rules" | "invite" | "leave" | "tutorial" | null;
 export function GameDialogs({
   modal,
   setModal,
@@ -62,7 +64,7 @@ export function GameDialogs({
       }}
     >
       <DialogContent
-        className={`game-modal ${modal === "rules" ? "rules-modal" : ""}`}
+        className={`game-modal ${modal === "rules" || modal === "tutorial" ? "rules-modal" : ""}`}
       >
         <DialogHeader>
           <div className="modal-symbol">
@@ -79,22 +81,26 @@ export function GameDialogs({
               ? "Good times start here."
               : modal === "join"
                 ? "Your seat is waiting."
-                : modal === "rules"
-                  ? "Small rules. Big decisions."
-                  : modal === "invite"
-                    ? "Make room for your people."
-                    : "Step away from the table?"}
+                : modal === "tutorial"
+                  ? "Your first deal starts here."
+                  : modal === "rules"
+                    ? "Small rules. Big decisions."
+                    : modal === "invite"
+                      ? "Make room for your people."
+                      : "Step away from the table?"}
           </DialogTitle>
           <DialogDescription>
             {modal === "create"
               ? "Open a private table. Invite 2–5 friends, or add a few friendly bots."
               : modal === "join"
                 ? "Bring your poker face. Enter your name and the six-character table code."
-                : modal === "rules"
-                  ? "Buy low. Sell high. Read your friends."
-                  : modal === "invite"
-                    ? "Send this link to your friends. No accounts, no fuss."
-                    : "Your seat is saved in this browser. Other players will wait for your turn."}
+                : modal === "tutorial"
+                  ? "A hands-on lesson. Two little decisions. About a minute."
+                  : modal === "rules"
+                    ? "Buy low. Sell high. Read your friends."
+                    : modal === "invite"
+                      ? "Send this link to your friends. No accounts, no fuss."
+                      : "Your seat is saved in this browser. Other players will wait for your turn."}
           </DialogDescription>
         </DialogHeader>
         {(modal === "create" || modal === "join") && (
@@ -174,8 +180,20 @@ export function GameDialogs({
             </p>
           </>
         )}
+        {modal === "tutorial" && (
+          <GameLesson
+            atTable={!!code}
+            busy={busy}
+            error={error}
+            onPractice={() => enter("You", true)}
+            onClose={() => setModal(null)}
+          />
+        )}
         {modal === "rules" && (
           <div className="rules-content">
+            <Button variant="outline" onClick={() => setModal("tutorial")}>
+              Try the 60-second interactive lesson <ArrowRight size={16} />
+            </Button>
             <article>
               <div className="rule-icon">
                 <House />

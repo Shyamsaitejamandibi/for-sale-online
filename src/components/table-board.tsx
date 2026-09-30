@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, palette, PropertyCard } from "./game-art";
 import type { PublicPlayer, View } from "@/lib/game";
 import { cn } from "@/lib/utils";
+import styles from "./game-experience.module.css";
 const money = (n: number) => `$${(n * 1000).toLocaleString("en-US")}`;
 const demoPlayers = [
   { id: "demo0", name: "You", color: 0, bot: false, bid: 0 },
@@ -210,11 +211,23 @@ export function GameBoard({
                       <span>The next properties are on their way…</span>
                     </div>
                   ) : game?.reveal.length ? (
-                    game.reveal.map((r) => (
-                      <div className="reveal-card" key={r.id}>
+                    game.reveal.map((r, i) => (
+                      <div
+                        className={cn(
+                          "reveal-card",
+                          styles.revealDeal,
+                          r.id === game.me && styles.revealOwn,
+                        )}
+                        key={r.id}
+                        style={{ animationDelay: `${i * 65}ms` }}
+                        aria-label={`${players.find((p) => p.id === r.id)?.name} sold property ${r.card} for ${money(r.check)}`}
+                      >
                         <strong>
                           {players.find((p) => p.id === r.id)?.name}
                         </strong>
+                        <span className={styles.revealLabel}>
+                          {r.id === game.me ? "YOUR DEAL" : "PROPERTY SOLD"}
+                        </span>
                         <span className="reveal-property">{r.card}</span>
                         <ArrowDownLeft size={16} />
                         <span>{money(r.check)}</span>
@@ -238,7 +251,11 @@ export function GameBoard({
                 </div>
                 <div className="market-caption">
                   {game?.phase === "selling" ? (
-                    "One secret choice. Everyone reveals together."
+                    game.pauseUntil ? (
+                      "Deals revealed. The next sale follows automatically."
+                    ) : (
+                      "One secret choice. Everyone reveals together."
+                    )
                   ) : (
                     <>
                       Low property <span className="caption-line" />
